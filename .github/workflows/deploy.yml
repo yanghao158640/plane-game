@@ -1,0 +1,33 @@
+name: Deploy to Netlify (jade-kheer)
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Netlify Site ID by subdomain
+        id: site
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          SITE_ID=$(curl -s -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" https://api.netlify.com/api/v1/sites | jq -r '.[] | select(.url | contains("jade-kheer-d47467")) | .id')
+          echo "id=$SITE_ID" >> "$GITHUB_OUTPUT"
+          echo "Resolved Netlify site id: $SITE_ID"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
+
+      - name: Deploy to production
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: netlify deploy --prod --dir=. --site=${{ steps.site.outputs.id }} --auth=$NETLIFY_AUTH_TOKEN
