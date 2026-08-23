@@ -1,0 +1,19 @@
+# 飞机大战(星陨·裂空战机) - .gitignore
+# 只提交网站源码(index.html + src/), 部署脚本/缓存不入库
+
+# 部署脚本(含 token 参数, 不入库)
+*.ps1
+deploy.zip
+server.py
+
+# Node / 缓存
+node_modules/
+package.json
+package-lock.json
+
+# 文档
+docs/
+
+# 环境/密钥
+.env*
+*.log
