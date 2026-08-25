@@ -510,14 +510,19 @@ export class Enemy {
     this.hp -= dmg;
     this.hitFlash = 0.08;
     scene.spawnDamageNumber(this.x, this.y - this.radius, Math.ceil(dmg), crit);
-    if (this.hp <= 0) { this.alive = false; scene.onEnemyDeath(this); }
+    // 受伤对话
+    if (dmg > 0 && !this.bubble) this.setBubble(pick(BUBBLE_ENEMY.hit), 1.0 + Math.random() * 0.6);
+    if (this.hp <= 0) {
+      this.setBubble(pick(BUBBLE_ENEMY.death), 1.5);
+      this.alive = false; scene.onEnemyDeath(this);
+    }
   }
   update(dt, scene) {
     if (!this.alive) return;
     this.t += dt; this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.updateBubble(dt);
     if (!this.bubble && Math.random() < 0.05 * dt * 10) {
-      this.setBubble(pick(BUBBLE_ENEMY), 1.5 + Math.random() * 1.0);
+      this.setBubble(pick(BUBBLE_ENEMY.spawn), 1.5 + Math.random() * 1.0);
     }
     // 移动
     switch (this.movement) {
@@ -701,6 +706,7 @@ export class Boss {
     this.hitFlash = 0; this.invuln = 0; this.enraged = false;
     this.subs = []; // 双体 Boss 的副体
     this.bubble = null;
+    this._dialogueState = 'enter'; // enter → fight → lowHp → death
   }
   setBubble(text, duration) { this.bubble = { text, timer: duration, duration }; }
   updateBubble(dt) { if (this.bubble) { this.bubble.timer -= dt; if (this.bubble.timer <= 0) this.bubble = null; } }
@@ -711,37 +717,46 @@ export class Boss {
     ctx.save();
     ctx.globalAlpha = alpha;
     const txt = b.text;
-    const bw = 10 + txt.length * 8;
-    const bh = 24;
+    const isLowHp = this._dialogueState === 'lowHp' || this._dialogueState === 'death';
+    // Boss 气泡更大更醒目
+    const fontSize = 14;
+    ctx.font = `bold ${fontSize}px Orbitron, monospace`;
+    const txtW = ctx.measureText(txt).width;
+    const bw = 16 + txtW + 16;
+    const bh = 30;
     const bx = this.x - bw / 2;
-    const by = this.y - this.radius - bh - 10;
-    ctx.fillStyle = 'rgba(5,6,15,0.85)';
-    ctx.strokeStyle = 'rgba(0,240,255,0.6)';
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = 'rgba(0,240,255,0.3)';
-    ctx.shadowBlur = 8;
-    const r = 6;
+    const by = this.y - this.radius - bh - 14;
+    // 外发光
+    const glowColor = isLowHp ? 'rgba(255,50,50,0.5)' : 'rgba(255,200,50,0.5)';
+    ctx.shadowColor = glowColor; ctx.shadowBlur = 18;
+    // 气泡背景
+    ctx.fillStyle = isLowHp ? 'rgba(40,5,5,0.9)' : 'rgba(10,8,20,0.9)';
+    ctx.strokeStyle = isLowHp ? 'rgba(255,50,50,0.8)' : 'rgba(255,200,50,0.8)';
+    ctx.lineWidth = 2;
+    const cr = 8;
     ctx.beginPath();
-    ctx.moveTo(bx + r, by);
-    ctx.lineTo(bx + bw - r, by);
-    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
-    ctx.lineTo(bx + bw, by + bh - r);
-    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
-    ctx.lineTo(bx + r, by + bh);
-    ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
-    ctx.lineTo(bx, by + r);
-    ctx.quadraticCurveTo(bx, by, bx + r, by);
+    ctx.moveTo(bx + cr, by);
+    ctx.lineTo(bx + bw - cr, by);
+    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + cr);
+    ctx.lineTo(bx + bw, by + bh - cr);
+    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - cr, by + bh);
+    ctx.lineTo(bx + cr, by + bh);
+    ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - cr);
+    ctx.lineTo(bx, by + cr);
+    ctx.quadraticCurveTo(bx, by, bx + cr, by);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(this.x - 5, by + bh);
-    ctx.lineTo(this.x, by + bh + 8);
-    ctx.lineTo(this.x + 5, by + bh);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // 三角指针
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px Rajdhani, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.beginPath();
+    ctx.moveTo(this.x - 6, by + bh);
+    ctx.lineTo(this.x, by + bh + 8);
+    ctx.lineTo(this.x + 6, by + bh);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // 文字
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = isLowHp ? '#ff4444' : '#ffdd44';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `bold ${fontSize}px Orbitron, monospace`;
     ctx.fillText(txt, this.x, by + bh / 2);
     ctx.restore();
   }
@@ -761,7 +776,11 @@ export class Boss {
     this.hp -= dmg;
     this.hitFlash = 0.06;
     scene.spawnDamageNumber(this.x + (Math.random() - 0.5) * 40, this.y - this.radius, Math.ceil(dmg), crit);
-    if (this.hp <= 0) { this.hp = 0; this.alive = false; scene.onBossDeath(this); return; }
+    if (this.hp <= 0) {
+      this.hp = 0; this._dialogueState = 'death';
+      this.setBubble(pick(BUBBLE_BOSS.death), 2.0);
+      this.alive = false; scene.onBossDeath(this); return;
+    }
     // 阶段切换
     const def = this.def;
     const ratio = this.hp / this.maxHp;
@@ -781,8 +800,18 @@ export class Boss {
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.invuln = Math.max(0, this.invuln - dt);
     this.updateBubble(dt);
-    if (!this.entering && !this.bubble && Math.random() < 0.04 * dt * 10) {
-      this.setBubble(pick(BUBBLE_BOSS), 1.8 + Math.random() * 1.2);
+
+    // 阶段感知气泡
+    const hpRatio = this.hp / this.maxHp;
+    if (this._dialogueState === 'enter' && !this.entering) {
+      this._dialogueState = 'fight';
+      this.setBubble(pick(BUBBLE_BOSS.enter), 2.5);
+    } else if (hpRatio <= 0.3 && this._dialogueState === 'fight') {
+      this._dialogueState = 'lowHp';
+      this.setBubble(pick(BUBBLE_BOSS.lowHp), 2.5);
+    } else if (!this.bubble && Math.random() < 0.04 * dt * 10) {
+      const pool = this._dialogueState === 'lowHp' ? BUBBLE_BOSS.lowHp : BUBBLE_BOSS.fight;
+      this.setBubble(pick(pool), 1.8 + Math.random() * 1.2);
     }
     // 入场
     if (this.entering) {
