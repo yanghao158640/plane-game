@@ -569,101 +569,195 @@ export class Enemy {
     ctx.shadowColor = this.color; ctx.shadowBlur = 10;
     ctx.fillStyle = flash ? '#fff' : this.color;
     const r = this.radius;
+    const c = this.color;
+    const f = (v) => flash ? '#fff' : v;
     switch (this.type) {
       case 'grunt': {
-        // 前掠翼战斗机 — 科技风尖角造型
+        // 哨兵 — 前掠翼战斗机，机头朝下朝向玩家
+        // 机身
         ctx.beginPath();
-        ctx.moveTo(0, -r * 0.35);         // 机鼻
-        ctx.lineTo(r * 0.35, r * 0.05);   // 机身右
-        ctx.lineTo(r * 0.95, -r * 0.7);   // 右翼尖（前掠）
-        ctx.lineTo(r * 0.55, r * 0.3);    // 右翼内
-        ctx.lineTo(r * 0.25, r * 0.8);    // 右引擎尾
-        ctx.lineTo(0, r * 0.55);          // 尾部中
-        ctx.lineTo(-r * 0.25, r * 0.8);   // 左引擎尾
-        ctx.lineTo(-r * 0.55, r * 0.3);   // 左翼内
-        ctx.lineTo(-r * 0.95, -r * 0.7);  // 左翼尖
-        ctx.lineTo(-r * 0.35, r * 0.05);  // 机身左
+        ctx.moveTo(0, r * 0.95);          // 机鼻（朝下）
+        ctx.lineTo(r * 0.25, r * 0.4);    // 机身右
+        ctx.lineTo(r * 0.20, r * 0.0);    // 右翼根
+        ctx.lineTo(r * 0.95, -r * 0.5);   // 右翼尖（前掠向上）
+        ctx.lineTo(r * 0.55, -r * 0.55);  // 右上翼内
+        ctx.lineTo(r * 0.30, -r * 0.95);  // 右尾翼尖
+        ctx.lineTo(0.0, -r * 0.75);       // 尾部中
+        ctx.lineTo(-r * 0.30, -r * 0.95); // 左尾翼尖
+        ctx.lineTo(-r * 0.55, -r * 0.55); // 左上翼内
+        ctx.lineTo(-r * 0.95, -r * 0.5);  // 左翼尖
+        ctx.lineTo(-r * 0.20, r * 0.0);   // 左翼根
+        ctx.lineTo(-r * 0.25, r * 0.4);   // 机身左
         ctx.closePath(); ctx.fill();
+        // 座舱
+        ctx.fillStyle = f(COLORS.cyan);
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.moveTo(0, r * 0.75);
+        ctx.lineTo(r * 0.12, r * 0.45);
+        ctx.lineTo(0, r * 0.55);
+        ctx.lineTo(-r * 0.12, r * 0.45);
+        ctx.closePath(); ctx.fill();
+        // 机翼装饰线
+        ctx.strokeStyle = f(COLORS.cyan);
+        ctx.lineWidth = 1.2;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(r * 0.25, r * 0.3);
+        ctx.lineTo(r * 0.80, -r * 0.30);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.25, r * 0.3);
+        ctx.lineTo(-r * 0.80, -r * 0.30);
+        ctx.stroke();
         // 引擎光
-        const engC = flash ? '#fff' : COLORS.cyan;
-        ctx.fillStyle = engC; ctx.shadowBlur = 16;
-        ctx.beginPath(); ctx.arc(r * 0.22, r * 0.7, r * 0.12, 0, TAU); ctx.fill();
-        ctx.beginPath(); ctx.arc(-r * 0.22, r * 0.7, r * 0.12, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = f(COLORS.cyan);
+        ctx.beginPath(); ctx.arc(r * 0.18, -r * 0.75, r * 0.12, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(-r * 0.18, -r * 0.75, r * 0.12, 0, TAU); ctx.fill();
         ctx.shadowBlur = 10;
         break;
       }
       case 'sine': {
-        // 菱形拦截机 — 尖锐菱形 + 核心光点
+        // 游骑兵 — 长菱形拦截机，机头朝下
         ctx.beginPath();
-        ctx.moveTo(0, -r);               // 上尖端
-        ctx.lineTo(r * 0.65, -r * 0.25); // 右上
-        ctx.lineTo(r, r * 0.2);          // 右翼尖
-        ctx.lineTo(r * 0.3, r * 0.5);    // 右下
-        ctx.lineTo(0, r * 0.75);         // 尾部
-        ctx.lineTo(-r * 0.3, r * 0.5);   // 左下
-        ctx.lineTo(-r, r * 0.2);         // 左翼尖
-        ctx.lineTo(-r * 0.65, -r * 0.25);// 左上
+        ctx.moveTo(0, r * 1.0);           // 机鼻尖
+        ctx.lineTo(r * 0.35, r * 0.5);    // 机身右
+        ctx.lineTo(r * 0.70, r * 0.15);   // 右翼内
+        ctx.lineTo(r * 1.0, -r * 0.2);    // 右翼尖
+        ctx.lineTo(r * 0.55, -r * 0.3);   // 右翼上
+        ctx.lineTo(r * 0.25, -r * 0.75);  // 右尾
+        ctx.lineTo(0, -r * 0.6);          // 尾部中
+        ctx.lineTo(-r * 0.25, -r * 0.75); // 左尾
+        ctx.lineTo(-r * 0.55, -r * 0.3);  // 左翼上
+        ctx.lineTo(-r * 1.0, -r * 0.2);   // 左翼尖
+        ctx.lineTo(-r * 0.70, r * 0.15);  // 左翼内
+        ctx.lineTo(-r * 0.35, r * 0.5);   // 机身左
         ctx.closePath(); ctx.fill();
-        // 核心能量
-        ctx.fillStyle = '#fff'; ctx.shadowBlur = 16;
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.22, 0, TAU); ctx.fill();
+        // 机身中线
+        ctx.fillStyle = f(COLORS.cyan);
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.moveTo(0, r * 0.8);
+        ctx.lineTo(r * 0.08, r * 0.3);
+        ctx.lineTo(0, r * 0.4);
+        ctx.lineTo(-r * 0.08, r * 0.3);
+        ctx.closePath(); ctx.fill();
+        // 翼尖光点
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = f(COLORS.cyan);
+        ctx.beginPath(); ctx.arc(r * 1.0, -r * 0.2, r * 0.10, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(-r * 1.0, -r * 0.2, r * 0.10, 0, TAU); ctx.fill();
         ctx.shadowBlur = 10;
         break;
       }
       case 'bomber': {
-        // 飞碟轰炸机 — 圆盘+双层环+炮塔
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.75, 0, TAU); ctx.fill();
-        // 外环
-        ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.shadowBlur = 16;
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
-        // 内环
-        ctx.strokeStyle = COLORS.cyan; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.5, 0, TAU); ctx.stroke();
-        // 炮塔
-        ctx.fillStyle = COLORS.gold; ctx.shadowBlur = 14;
-        ctx.beginPath(); ctx.arc(0, -r * 0.15, r * 0.22, 0, TAU); ctx.fill();
+        // 自爆机 — 肥厚轰炸机，机头朝下
+        // 主机身
+        ctx.beginPath();
+        ctx.moveTo(0, r * 0.85);          // 机鼻
+        ctx.lineTo(r * 0.45, r * 0.4);    // 右机身
+        ctx.lineTo(r * 0.40, -r * 0.2);   // 右翼根
+        ctx.lineTo(r * 0.75, -r * 0.5);   // 右翼尖
+        ctx.lineTo(r * 0.30, -r * 0.6);   // 右翼内
+        ctx.lineTo(r * 0.20, -r * 0.9);   // 右尾
+        ctx.lineTo(0, -r * 0.75);         // 尾中
+        ctx.lineTo(-r * 0.20, -r * 0.9);  // 左尾
+        ctx.lineTo(-r * 0.30, -r * 0.6);  // 左翼内
+        ctx.lineTo(-r * 0.75, -r * 0.5);  // 左翼尖
+        ctx.lineTo(-r * 0.40, -r * 0.2);  // 左翼根
+        ctx.lineTo(-r * 0.45, r * 0.4);   // 左机身
+        ctx.closePath(); ctx.fill();
+        // 红色危险标记条纹
+        ctx.fillStyle = f(COLORS.red);
+        ctx.shadowBlur = 0;
+        ctx.fillRect(-r * 0.35, r * 0.0, r * 0.7, r * 0.15);
+        // 爆炸核心标记
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = f(COLORS.gold);
+        ctx.beginPath(); ctx.arc(0, r * 0.2, r * 0.18, 0, TAU); ctx.fill();
+        ctx.fillStyle = f('#fff');
+        ctx.beginPath(); ctx.arc(0, r * 0.2, r * 0.08, 0, TAU); ctx.fill();
+        // 引擎
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = f(COLORS.red);
+        ctx.beginPath(); ctx.arc(r * 0.15, -r * 0.75, r * 0.12, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(-r * 0.15, -r * 0.75, r * 0.12, 0, TAU); ctx.fill();
         ctx.shadowBlur = 10;
         break;
       }
       case 'elite': {
-        // 六边形旗舰 — 双旋转六边形 + 核心
+        // 精英卫士 — 重型指挥舰，机头朝下
+        // 外翼
         ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * TAU - Math.PI / 2 + this.t * 0.3;
-          const px = Math.cos(a) * r, py = Math.sin(a) * r;
-          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-        }
+        ctx.moveTo(0, r * 0.95);          // 机鼻
+        ctx.lineTo(r * 0.40, r * 0.5);    // 机身右
+        ctx.lineTo(r * 0.35, r * 0.0);    // 右翼根
+        ctx.lineTo(r * 1.05, -r * 0.3);   // 右外翼尖
+        ctx.lineTo(r * 0.80, -r * 0.45);  // 右翼外
+        ctx.lineTo(r * 0.40, -r * 0.55);  // 右翼内
+        ctx.lineTo(r * 0.25, -r * 0.95);  // 右尾
+        ctx.lineTo(0, -r * 0.75);         // 尾中
+        ctx.lineTo(-r * 0.25, -r * 0.95); // 左尾
+        ctx.lineTo(-r * 0.40, -r * 0.55); // 左翼内
+        ctx.lineTo(-r * 0.80, -r * 0.45); // 左翼外
+        ctx.lineTo(-r * 1.05, -r * 0.3);  // 左外翼尖
+        ctx.lineTo(-r * 0.35, r * 0.0);   // 左翼根
+        ctx.lineTo(-r * 0.40, r * 0.5);   // 机身左
         ctx.closePath(); ctx.fill();
-        // 内六边形（反向旋转）
-        ctx.fillStyle = flash ? '#fff' : COLORS.cyan;
+        // 内层装甲
+        ctx.fillStyle = f(COLORS.cyan);
+        ctx.shadowBlur = 0;
         ctx.beginPath();
         for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * TAU - Math.PI / 2 - this.t * 0.3;
-          const px = Math.cos(a) * r * 0.55, py = Math.sin(a) * r * 0.55;
+          const a = (i / 6) * TAU - Math.PI / 2 + this.t * 0.2;
+          const px = Math.cos(a) * r * 0.5, py = Math.sin(a) * r * 0.5;
           i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
         }
         ctx.closePath(); ctx.fill();
         // 核心
-        ctx.fillStyle = '#fff'; ctx.shadowBlur = 16;
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.18, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = f('#fff');
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.16, 0, TAU); ctx.fill();
+        // 翼尖光点
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = f(COLORS.cyan);
+        ctx.beginPath(); ctx.arc(r * 1.05, -r * 0.3, r * 0.08, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(-r * 1.05, -r * 0.3, r * 0.08, 0, TAU); ctx.fill();
         ctx.shadowBlur = 10;
         break;
       }
       case 'turret': {
-        // 防御炮台 — 矩形底座 + 双炮管 + 侧装甲
-        ctx.fillRect(-r * 0.75, -r * 0.35, r * 1.5, r * 0.7);
-        // 侧装甲
-        const armC = flash ? '#fff' : COLORS.cyan;
-        ctx.fillStyle = armC;
-        ctx.fillRect(-r * 0.85, -r * 0.2, r * 0.15, r * 0.4);
-        ctx.fillRect(r * 0.7, -r * 0.2, r * 0.15, r * 0.4);
-        // 双炮管
-        ctx.fillStyle = COLORS.purple; ctx.shadowBlur = 16;
-        ctx.fillRect(-r * 0.22, -r * 0.75, r * 0.18, r * 0.4);
-        ctx.fillRect(r * 0.04, -r * 0.75, r * 0.18, r * 0.4);
+        // 炮塔 — 多炮管防御平台
+        // 底座（扁椭圆）
+        ctx.beginPath(); ctx.ellipse(0, 0, r * 0.85, r * 0.5, 0, 0, TAU); ctx.fill();
+        // 底座装甲板
+        ctx.fillStyle = f(COLORS.cyan);
+        ctx.shadowBlur = 0;
+        ctx.fillRect(-r * 0.75, -r * 0.08, r * 1.5, r * 0.16);
+        // 主炮管（左右两门，朝下）
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = f(c);
+        ctx.fillRect(-r * 0.35, -r * 0.2, r * 0.15, r * 0.8);
+        ctx.fillRect(r * 0.20, -r * 0.2, r * 0.15, r * 0.8);
+        // 炮口
+        ctx.fillStyle = f(COLORS.purple);
+        ctx.beginPath();
+        ctx.arc(-r * 0.275, r * 0.55, r * 0.09, 0, TAU);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(r * 0.275, r * 0.55, r * 0.09, 0, TAU);
+        ctx.fill();
+        // 炮管装饰环
+        ctx.strokeStyle = f(COLORS.gold);
+        ctx.lineWidth = 1.5;
+        ctx.shadowBlur = 8;
+        ctx.strokeRect(-r * 0.35, r * 0.1, r * 0.15, r * 0.06);
+        ctx.strokeRect(r * 0.20, r * 0.1, r * 0.15, r * 0.06);
         // 核心
-        ctx.fillStyle = '#fff'; ctx.shadowBlur = 12;
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.14, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = f('#fff');
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.12, 0, TAU); ctx.fill();
         ctx.shadowBlur = 10;
         break;
       }
@@ -847,67 +941,133 @@ export class Boss {
     ctx.save();
     ctx.translate(this.x, this.y);
     const flash = this.hitFlash > 0;
+    const t = this.t;
     ctx.globalAlpha = this.invuln > 0 ? 0.6 : 1;
     ctx.shadowColor = this.color;
-    // 四翼展开（在主环下方）
-    ctx.fillStyle = flash ? '#fff' : this.color;
-    ctx.shadowBlur = 18;
-    ctx.globalAlpha = 0.5;
+    const f = (v) => flash ? '#fff' : v;
+    // ── 四翼能量翼（半透明、脉动） ──
+    ctx.fillStyle = f(this.color);
+    ctx.shadowBlur = 20;
+    ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 2);
     for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * TAU + this.t * 0.2;
-      const wx = Math.cos(a) * r * 0.45, wy = Math.sin(a) * r * 0.45;
+      const a = (i / 4) * TAU + t * 0.15;
+      const wx = Math.cos(a) * r * 0.35, wy = Math.sin(a) * r * 0.35;
       ctx.save();
       ctx.translate(wx, wy);
       ctx.rotate(a);
+      // 翼身（更长的三角形）
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.lineTo(r * 0.35, -r * 0.12);
-      ctx.lineTo(r * 0.55, 0);
-      ctx.lineTo(r * 0.35, r * 0.12);
+      ctx.lineTo(r * 0.50, -r * 0.10);
+      ctx.lineTo(r * 0.75, 0);
+      ctx.lineTo(r * 0.50, r * 0.10);
       ctx.closePath();
+      ctx.fill();
+      // 翼尖光点
+      ctx.shadowBlur = 24;
+      ctx.fillStyle = f(COLORS.cyan);
+      ctx.beginPath();
+      ctx.arc(r * 0.75, 0, r * 0.06, 0, TAU);
       ctx.fill();
       ctx.restore();
     }
     ctx.globalAlpha = 1;
-    // 外层旋转尖刺环
-    ctx.rotate(this.t * 0.3);
-    ctx.strokeStyle = this.color; ctx.lineWidth = 2.5;
     ctx.shadowBlur = 24;
-    // 八角尖刺环
+    // ── 外层装甲环（12角尖刺，交替长短） ──
+    ctx.rotate(t * 0.25);
+    ctx.strokeStyle = f(this.color);
+    ctx.lineWidth = 2.5;
+    ctx.fillStyle = f(this.color);
+    ctx.globalAlpha = 0.6;
     ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * TAU;
-      const outerR = i % 2 === 0 ? r * 1.0 : r * 0.82;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU;
+      const isLong = i % 2 === 0;
+      const outerR = isLong ? r * 1.05 : r * 0.78;
       const px = Math.cos(a) * outerR, py = Math.sin(a) * outerR;
-      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
-    ctx.closePath(); ctx.stroke();
-    // 内层 cyan 环
-    ctx.strokeStyle = COLORS.cyan; ctx.lineWidth = 1.5;
-    ctx.shadowColor = COLORS.cyan; ctx.shadowBlur = 16;
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // ── 中间层装饰环（金色，反向旋转） ──
+    ctx.rotate(-t * 0.35);
+    ctx.strokeStyle = f(COLORS.gold);
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = COLORS.gold;
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU + 0.15;
+      const outerR = i % 2 === 0 ? r * 0.70 : r * 0.60;
+      const px = Math.cos(a) * outerR, py = Math.sin(a) * outerR;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.rotate(t * 0.10);
+    // ── 内层 cyan 环 ──
+    ctx.strokeStyle = f(COLORS.cyan);
+    ctx.lineWidth = 2;
+    ctx.shadowColor = COLORS.cyan;
+    ctx.shadowBlur = 18;
     ctx.beginPath();
     for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * TAU + 0.2;
-      const px = Math.cos(a) * r * 0.65, py = Math.sin(a) * r * 0.65;
-      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      const a = (i / 8) * TAU + 0.3;
+      const px = Math.cos(a) * r * 0.48, py = Math.sin(a) * r * 0.48;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
-    ctx.closePath(); ctx.stroke();
-    ctx.rotate(-this.t * 0.3);
-    // 核心能量球
-    ctx.shadowColor = this.color; ctx.shadowBlur = 28;
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.65);
-    g.addColorStop(0, flash ? '#fff' : '#fff');
-    g.addColorStop(0.3, flash ? '#fff' : this.color);
-    g.addColorStop(0.65, this.color);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.rotate(0);
+    // ── 核心能量球（多层渐变） ──
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 35;
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
+    g.addColorStop(0, f('#ffffff'));
+    g.addColorStop(0.2, f(this.color));
+    g.addColorStop(0.5, f(this.color));
+    g.addColorStop(0.8, f(COLORS.cyan));
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.65, 0, TAU); ctx.fill();
-    // 弱点核心
-    if (this.weakpoint > 0 || this.invuln <= 0) {
-      ctx.fillStyle = this.weakpoint > 0 ? COLORS.gold : '#fff';
-      ctx.shadowBlur = this.weakpoint > 0 ? 35 : 14;
-      ctx.shadowColor = this.weakpoint > 0 ? COLORS.gold : '#fff';
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.18, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.55, 0, TAU);
+    ctx.fill();
+    // ── 内圈能量环（脉动） ──
+    const pulse = 0.7 + 0.3 * Math.sin(t * 3);
+    ctx.strokeStyle = f(COLORS.cyan);
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 20;
+    ctx.globalAlpha = pulse;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.35, 0, TAU);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // ── 弱点核心 ──
+    const weakGlow = this.weakpoint > 0 || this.invuln <= 0;
+    if (weakGlow) {
+      const isWeak = this.weakpoint > 0;
+      ctx.fillStyle = isWeak ? COLORS.gold : f('#fff');
+      ctx.shadowBlur = isWeak ? 40 : 18;
+      ctx.shadowColor = isWeak ? COLORS.gold : f('#fff');
+      const corePulse = isWeak ? 1.0 : 0.85 + 0.15 * Math.sin(t * 4);
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.16 * corePulse, 0, TAU);
+      ctx.fill();
+      // 弱点时外围光晕
+      if (isWeak) {
+        ctx.shadowBlur = 50;
+        ctx.globalAlpha = 0.3 + 0.2 * Math.sin(t * 5);
+        ctx.fillStyle = COLORS.gold;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.30, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
     }
     ctx.globalAlpha = 1;
     ctx.restore();
