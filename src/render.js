@@ -381,3 +381,162 @@ export const Sfx = {
     }
   },
 };
+
+// ───────────────────────── 背景音乐（程序化合成） ─────────────────────────
+export const Bgm = {
+  ctx: null,
+  master: null,
+  mode: 'menu',
+  _nodes: [],
+  _transition: 0,
+  _targetMode: 'menu',
+  _running: false,
+  _arpTimer: null,
+  _percTimer: null,
+
+  init() {
+    if (this.ctx) return;
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.12;
+      this.master.connect(this.ctx.destination);
+    } catch (e) { /* 静默失败 */ }
+  },
+  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  setVol(v) { if (this.master) this.master.gain.value = v * 0.12; },
+
+  setMode(mode) {
+    this.init();
+    if (this._targetMode === mode) return;
+    this._targetMode = mode;
+    this._transition = 0;
+    if (!this._running) { this._running = true; this._tick(); }
+  },
+
+  stop() {
+    if (this._arpTimer) { clearInterval(this._arpTimer); this._arpTimer = null; }
+    if (this._percTimer) { clearInterval(this._percTimer); this._percTimer = null; }
+    for (const n of this._nodes) { try { n.stop(); } catch (e) {} }
+    this._nodes = [];
+    this._running = false;
+    this.mode = 'menu';
+    this._targetMode = 'menu';
+  },
+
+  _tick() {
+    if (!this._running) return;
+    if (this._transition < 1) { this._transition = Math.min(1, this._transition + 0.02); }
+    if (this._transition >= 1 && this.mode !== this._targetMode) {
+      this.mode = this._targetMode;
+      this._rebuild();
+    }
+    if (this._nodes.length === 0 && this.mode !== 'menu') { this._rebuild(); }
+    if (this.mode === 'menu') { this._clearNodes(); }
+    requestAnimationFrame(() => this._tick());
+  },
+
+  _clearNodes() {
+    for (const n of this._nodes) { try { n.stop(); } catch (e) {} }
+    this._nodes = [];
+  },
+
+  _rebuild() {
+    this._clearNodes();
+    if (this._arpTimer) { clearInterval(this._arpTimer); this._arpTimer = null; }
+    if (this._percTimer) { clearInterval(this._percTimer); this._percTimer = null; }
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const isBoss = this.mode === 'boss';
+
+    // 1. 低频脉冲 Bass
+    const bass = ctx.createOscillator();
+    bass.type = isBoss ? 'sawtooth' : 'sine';
+    const bassFreq = isBoss ? 110 : 55;
+    bass.frequency.setValueAtTime(bassFreq, now);
+    if (isBoss) {
+      bass.frequency.linearRampToValueAtTime(130, now + 0.5);
+      bass.frequency.linearRampToValueAtTime(110, now + 1.0);
+    }
+    const bassGain = ctx.createGain();
+    bassGain.gain.setValueAtTime(isBoss ? 0.12 : 0.08, now);
+    const bassLfo = ctx.createOscillator();
+    bassLfo.type = 'sine';
+    bassLfo.frequency.setValueAtTime(isBoss ? 4 : 1.5, now);
+    const bassMod = ctx.createGain();
+    bassMod.gain.value = isBoss ? 0.1 : 0.06;
+    bassLfo.connect(bassMod); bassMod.connect(bassGain.gain);
+    bass.connect(bassGain); bassGain.connect(this.master);
+    bassLfo.start(now); bass.start(now);
+    this._nodes.push(bass, bassLfo, bassGain, bassMod);
+
+    // 2. 和弦垫 Pad
+    const padNotes = isBoss ? [220, 277, 330, 440] : [220, 330, 440, 550];
+    for (const f of padNotes) {
+      const o = ctx.createOscillator();
+      o.type = isBoss ? 'sawtooth' : 'triangle';
+      o.frequency.setValueAtTime(f, now);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(isBoss ? 0.03 : 0.02, now);
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.setValueAtTime(isBoss ? 3 + Math.random() : 0.5 + Math.random(), now);
+      const mod = ctx.createGain();
+      mod.gain.value = isBoss ? 0.02 : 0.01;
+      lfo.connect(mod); mod.connect(g.gain);
+      const fNode = ctx.createBiquadFilter();
+      fNode.type = 'lowpass';
+      fNode.frequency.value = isBoss ? 800 : 400;
+      fNode.Q.value = 1;
+      o.connect(g); g.connect(fNode); fNode.connect(this.master);
+      lfo.start(now); o.start(now);
+      this._nodes.push(o, g, lfo, mod, fNode);
+    }
+
+    // 3. 琶音 Arpeggio
+    const scale = isBoss ? [440, 494, 554, 587, 622, 740, 880] : [262, 330, 392, 524, 660, 784];
+    const arpRate = isBoss ? 0.08 : 0.3;
+    const arpVol = isBoss ? 0.06 : 0.04;
+    let arpIdx = 0;
+    const arp = ctx.createOscillator();
+    arp.type = isBoss ? 'square' : 'sine';
+    const arpGain = ctx.createGain();
+    arpGain.gain.value = 0;
+    this._arpTimer = setInterval(() => {
+      if (!this._running) { clearInterval(this._arpTimer); return; }
+      const t = ctx.currentTime;
+      arp.frequency.setValueAtTime(scale[arpIdx % scale.length], t);
+      arpGain.gain.setValueAtTime(arpVol, t);
+      arpGain.gain.exponentialRampToValueAtTime(0.001, t + arpRate * 0.8);
+      arpIdx++;
+      if (isBoss && arpIdx % 4 === 3) {
+        arp.frequency.setValueAtTime(scale[arpIdx % scale.length] * 2, t);
+      }
+    }, arpRate * 1000);
+    arp.connect(arpGain); arpGain.connect(this.master);
+    arp.start(now);
+    this._nodes.push(arp, arpGain);
+
+    // 4. Boss 模式：打击噪声
+    if (isBoss) {
+      this._percTimer = setInterval(() => {
+        if (!this._running) { clearInterval(this._percTimer); return; }
+        const t = ctx.currentTime;
+        const buf = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const f = ctx.createBiquadFilter();
+        f.type = 'highpass'; f.frequency.value = 2000;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        src.connect(f); f.connect(g); g.connect(this.master);
+        src.start(t);
+        this._nodes.push(src, f, g);
+        setTimeout(() => { src.stop(); try { src.disconnect(); } catch(e) {} }, 100);
+      }, 250);
+    }
+  },
+};

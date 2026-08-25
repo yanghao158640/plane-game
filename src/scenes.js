@@ -1,7 +1,7 @@
 // scenes.js — 所有场景：菜单、战斗（核心）、结算
 import { VIEW, COLORS, SHIPS, DIFFICULTY, POWERUPS, WEAPONS, LEVELS, SUBSTAGES, BOSSES } from './data.js';
 import { TAU, clamp, randRange, randInt, pick, chance, dist, circleHit, Pool } from './core.js';
-import { Background, Effects, HUD, Sfx } from './render.js';
+import { Background, Effects, HUD, Sfx, Bgm } from './render.js';
 import { Player, Enemy, Boss, Bullet, Particle, PowerUp } from './entities.js';
 import { fireWeapon, enemyFire, bossPattern, Spawner, getUpgradeChoices } from './systems.js';
 import { saveSave } from './storage.js';
@@ -56,7 +56,7 @@ export class MenuScene extends Scene {
     this.bg = new Background();
     this.t = 0;
   }
-  enter() { Sfx.init(); }
+  enter() { Sfx.init(); Bgm.setMode('menu'); }
   update(dt, input) {
     this.t += dt;
     this.bg.update(dt * 0.4);
@@ -190,6 +190,7 @@ export class LevelSelectScene extends Scene {
     this.bg = new Background();
     this.t = 0;
   }
+  enter() { Bgm.setMode('menu'); }
   update(dt, input) {
     this.t += dt;
     this.bg.update(dt * 0.4);
@@ -325,8 +326,12 @@ export class GameScene extends Scene {
     this.opts = opts;
     this.diff = DIFFICULTY[opts.difficulty || 'normal'];
   }
+  exit() { Bgm.stop(); }
   enter() {
     const o = this.opts;
+    Bgm.init();
+    Bgm.resume();
+    Bgm.setMode('normal');
     this.player = new Player(o.shipId);
     // 按难度放大玩家受伤（噩梦 +40%、休闲 -40%）
     this.player.dmgTakenMult = this.diff.dmgMult;
@@ -402,6 +407,7 @@ export class GameScene extends Scene {
     this.bossIntroT = 2.6;
     this.bossIntroName = this.boss.def.name;
     Sfx.play('boss');
+    Bgm.setMode('boss');
     this.fx.flash(this.boss.color, 0.3);
   }
   spawnLaser(boss, args) {
@@ -447,6 +453,7 @@ export class GameScene extends Scene {
     this.bg.setSpeed(1);
     this.boss = null;
     this.spawner.onBossDead();
+    Bgm.setMode('normal');
     // 战利品雨
     for (let i = 0; i < 8; i++) {
       this._spawnPowerUp(boss.x + randRange(-40, 40), boss.y + randRange(-40, 40), pick(['power','power','energy','shield','heal','core']));

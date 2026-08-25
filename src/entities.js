@@ -1,7 +1,7 @@
 // entities.js — 所有游戏实体
 // 依赖: core.js, data.js；通过 scene 提供的 spawn 方法解耦系统层
-import { VIEW, COLORS, SHIPS, WEAPONS, ENEMIES, BOSSES } from './data.js';
-import { clamp, TAU, angleTowards, dist, circleHit } from './core.js';
+import { VIEW, COLORS, SHIPS, WEAPONS, ENEMIES, BOSSES, BUBBLE_ENEMY, BUBBLE_BOSS } from './data.js';
+import { clamp, TAU, angleTowards, dist, circleHit, pick } from './core.js';
 
 // ───────────────────────── 基类 ─────────────────────────
 export class Entity {
@@ -443,6 +443,54 @@ export class Enemy {
     this.explosive = false; this.explosiveRadius = 0; this.explosiveDamage = 0;
     this.buffs = []; this.shieldHp = 0; this.enraged = false;
     this.hoverY = 200; this._baseX = 0; this.hitFlash = 0;
+    this.bubble = null;
+  }
+  setBubble(text, duration) { this.bubble = { text, timer: duration, duration }; }
+  updateBubble(dt) { if (this.bubble) { this.bubble.timer -= dt; if (this.bubble.timer <= 0) this.bubble = null; } }
+  renderBubble(ctx) {
+    if (!this.bubble) return;
+    const b = this.bubble;
+    const alpha = b.timer < 0.3 ? b.timer / 0.3 : Math.min(1, b.timer / 0.3);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const txt = b.text;
+    const bw = 10 + txt.length * 8;
+    const bh = 24;
+    const bx = this.x - bw / 2;
+    const by = this.y - this.radius - bh - 10;
+    ctx.fillStyle = 'rgba(5,6,15,0.85)';
+    ctx.strokeStyle = 'rgba(0,240,255,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = 'rgba(0,240,255,0.3)';
+    ctx.shadowBlur = 8;
+    const r = 6;
+    ctx.beginPath();
+    ctx.moveTo(bx + r, by);
+    ctx.lineTo(bx + bw - r, by);
+    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+    ctx.lineTo(bx + bw, by + bh - r);
+    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+    ctx.lineTo(bx + r, by + bh);
+    ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+    ctx.lineTo(bx, by + r);
+    ctx.quadraticCurveTo(bx, by, bx + r, by);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(this.x - 5, by + bh);
+    ctx.lineTo(this.x, by + bh + 8);
+    ctx.lineTo(this.x + 5, by + bh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px Rajdhani, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(txt, this.x, by + bh / 2);
+    ctx.restore();
   }
   init(type, x, y, diffMult = 1, fireMult = 1) {
     const def = ENEMIES[type];
@@ -467,6 +515,10 @@ export class Enemy {
   update(dt, scene) {
     if (!this.alive) return;
     this.t += dt; this.hitFlash = Math.max(0, this.hitFlash - dt);
+    this.updateBubble(dt);
+    if (!this.bubble && Math.random() < 0.05 * dt * 10) {
+      this.setBubble(pick(BUBBLE_ENEMY), 1.5 + Math.random() * 1.0);
+    }
     // 移动
     switch (this.movement) {
       case 'straight': this.y += this.speed * dt; break;
@@ -513,35 +565,103 @@ export class Enemy {
     ctx.fillStyle = flash ? '#fff' : this.color;
     const r = this.radius;
     switch (this.type) {
-      case 'grunt':
+      case 'grunt': {
+        // 前掠翼战斗机 — 科技风尖角造型
         ctx.beginPath();
-        ctx.moveTo(0, r); ctx.lineTo(r, -r * 0.6); ctx.lineTo(0, -r * 0.3);
-        ctx.lineTo(-r, -r * 0.6); ctx.closePath(); ctx.fill();
-        break;
-      case 'sine':
-        ctx.beginPath();
-        ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0);
+        ctx.moveTo(0, -r * 0.35);         // 机鼻
+        ctx.lineTo(r * 0.35, r * 0.05);   // 机身右
+        ctx.lineTo(r * 0.95, -r * 0.7);   // 右翼尖（前掠）
+        ctx.lineTo(r * 0.55, r * 0.3);    // 右翼内
+        ctx.lineTo(r * 0.25, r * 0.8);    // 右引擎尾
+        ctx.lineTo(0, r * 0.55);          // 尾部中
+        ctx.lineTo(-r * 0.25, r * 0.8);   // 左引擎尾
+        ctx.lineTo(-r * 0.55, r * 0.3);   // 左翼内
+        ctx.lineTo(-r * 0.95, -r * 0.7);  // 左翼尖
+        ctx.lineTo(-r * 0.35, r * 0.05);  // 机身左
         ctx.closePath(); ctx.fill();
+        // 引擎光
+        const engC = flash ? '#fff' : COLORS.cyan;
+        ctx.fillStyle = engC; ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.arc(r * 0.22, r * 0.7, r * 0.12, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(-r * 0.22, r * 0.7, r * 0.12, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 10;
         break;
-      case 'bomber':
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
-        ctx.fillStyle = COLORS.gold; ctx.beginPath(); ctx.arc(0, 0, r * 0.4, 0, TAU); ctx.fill();
+      }
+      case 'sine': {
+        // 菱形拦截机 — 尖锐菱形 + 核心光点
+        ctx.beginPath();
+        ctx.moveTo(0, -r);               // 上尖端
+        ctx.lineTo(r * 0.65, -r * 0.25); // 右上
+        ctx.lineTo(r, r * 0.2);          // 右翼尖
+        ctx.lineTo(r * 0.3, r * 0.5);    // 右下
+        ctx.lineTo(0, r * 0.75);         // 尾部
+        ctx.lineTo(-r * 0.3, r * 0.5);   // 左下
+        ctx.lineTo(-r, r * 0.2);         // 左翼尖
+        ctx.lineTo(-r * 0.65, -r * 0.25);// 左上
+        ctx.closePath(); ctx.fill();
+        // 核心能量
+        ctx.fillStyle = '#fff'; ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.22, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 10;
         break;
-      case 'elite':
+      }
+      case 'bomber': {
+        // 飞碟轰炸机 — 圆盘+双层环+炮塔
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.75, 0, TAU); ctx.fill();
+        // 外环
+        ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+        // 内环
+        ctx.strokeStyle = COLORS.cyan; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.5, 0, TAU); ctx.stroke();
+        // 炮塔
+        ctx.fillStyle = COLORS.gold; ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.arc(0, -r * 0.15, r * 0.22, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 10;
+        break;
+      }
+      case 'elite': {
+        // 六边形旗舰 — 双旋转六边形 + 核心
         ctx.beginPath();
         for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * TAU + this.t * 0.5;
+          const a = (i / 6) * TAU - Math.PI / 2 + this.t * 0.3;
           const px = Math.cos(a) * r, py = Math.sin(a) * r;
           i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
         }
         ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, r * 0.4, 0, TAU); ctx.fill();
+        // 内六边形（反向旋转）
+        ctx.fillStyle = flash ? '#fff' : COLORS.cyan;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * TAU - Math.PI / 2 - this.t * 0.3;
+          const px = Math.cos(a) * r * 0.55, py = Math.sin(a) * r * 0.55;
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath(); ctx.fill();
+        // 核心
+        ctx.fillStyle = '#fff'; ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.18, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 10;
         break;
-      case 'turret':
-        ctx.fillRect(-r, -r * 0.7, r * 2, r * 1.4);
-        ctx.fillStyle = COLORS.purple;
-        ctx.fillRect(-r * 0.3, -r, r * 0.6, r * 0.6);
+      }
+      case 'turret': {
+        // 防御炮台 — 矩形底座 + 双炮管 + 侧装甲
+        ctx.fillRect(-r * 0.75, -r * 0.35, r * 1.5, r * 0.7);
+        // 侧装甲
+        const armC = flash ? '#fff' : COLORS.cyan;
+        ctx.fillStyle = armC;
+        ctx.fillRect(-r * 0.85, -r * 0.2, r * 0.15, r * 0.4);
+        ctx.fillRect(r * 0.7, -r * 0.2, r * 0.15, r * 0.4);
+        // 双炮管
+        ctx.fillStyle = COLORS.purple; ctx.shadowBlur = 16;
+        ctx.fillRect(-r * 0.22, -r * 0.75, r * 0.18, r * 0.4);
+        ctx.fillRect(r * 0.04, -r * 0.75, r * 0.18, r * 0.4);
+        // 核心
+        ctx.fillStyle = '#fff'; ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.14, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 10;
         break;
+      }
       default:
         ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
     }
@@ -558,6 +678,7 @@ export class Enemy {
     if (this.type === 'elite' || this.type === 'turret') {
       this._bar(ctx, this.maxHp);
     }
+    this.renderBubble(ctx);
   }
   _bar(ctx, max) {
     const w = this.radius * 2;
@@ -579,6 +700,50 @@ export class Boss {
     this.entering = true; this.weakpoint = 0;
     this.hitFlash = 0; this.invuln = 0; this.enraged = false;
     this.subs = []; // 双体 Boss 的副体
+    this.bubble = null;
+  }
+  setBubble(text, duration) { this.bubble = { text, timer: duration, duration }; }
+  updateBubble(dt) { if (this.bubble) { this.bubble.timer -= dt; if (this.bubble.timer <= 0) this.bubble = null; } }
+  renderBubble(ctx) {
+    if (!this.bubble) return;
+    const b = this.bubble;
+    const alpha = b.timer < 0.3 ? b.timer / 0.3 : Math.min(1, b.timer / 0.3);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const txt = b.text;
+    const bw = 10 + txt.length * 8;
+    const bh = 24;
+    const bx = this.x - bw / 2;
+    const by = this.y - this.radius - bh - 10;
+    ctx.fillStyle = 'rgba(5,6,15,0.85)';
+    ctx.strokeStyle = 'rgba(0,240,255,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = 'rgba(0,240,255,0.3)';
+    ctx.shadowBlur = 8;
+    const r = 6;
+    ctx.beginPath();
+    ctx.moveTo(bx + r, by);
+    ctx.lineTo(bx + bw - r, by);
+    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+    ctx.lineTo(bx + bw, by + bh - r);
+    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+    ctx.lineTo(bx + r, by + bh);
+    ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+    ctx.lineTo(bx, by + r);
+    ctx.quadraticCurveTo(bx, by, bx + r, by);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(this.x - 5, by + bh);
+    ctx.lineTo(this.x, by + bh + 8);
+    ctx.lineTo(this.x + 5, by + bh);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px Rajdhani, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(txt, this.x, by + bh / 2);
+    ctx.restore();
   }
   init(defId, diffMult = 1, fireMult = 1) {
     const def = BOSSES[defId];
@@ -589,10 +754,10 @@ export class Boss {
     this.x = VIEW.W / 2; this.y = -def.radius;
     this.phaseIdx = 0; this.patternTimers = def.phases[0].patterns.map(() => 0);
     this.entering = true; this.alive = true; this.t = 0;
-    this.hitFlash = 0; this.invuln = 2; this.weakpoint = 0; this.enraged = false;
+    this.hitFlash = 0; this.invuln = 0; this.weakpoint = 0; this.enraged = false;
+    this.bubble = null;
   }
   takeDamage(dmg, scene, crit = false) {
-    if (this.invuln > 0) return;
     this.hp -= dmg;
     this.hitFlash = 0.06;
     scene.spawnDamageNumber(this.x + (Math.random() - 0.5) * 40, this.y - this.radius, Math.ceil(dmg), crit);
@@ -604,7 +769,7 @@ export class Boss {
       if (ratio <= def.phases[i].hpThreshold) {
         this.phaseIdx = i;
         this.patternTimers = def.phases[i].patterns.map(() => 0);
-        this.invuln = 1.2;
+        this.invuln = 0;
         scene.onBossPhase(this, i);
         break;
       }
@@ -615,6 +780,10 @@ export class Boss {
     this.t += dt;
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.invuln = Math.max(0, this.invuln - dt);
+    this.updateBubble(dt);
+    if (!this.entering && !this.bubble && Math.random() < 0.04 * dt * 10) {
+      this.setBubble(pick(BUBBLE_BOSS), 1.8 + Math.random() * 1.2);
+    }
     // 入场
     if (this.entering) {
       this.y += 60 * dt;
@@ -649,38 +818,72 @@ export class Boss {
     ctx.save();
     ctx.translate(this.x, this.y);
     const flash = this.hitFlash > 0;
-    // 外层旋转环
-    ctx.rotate(this.t * 0.3);
-    ctx.strokeStyle = this.color; ctx.lineWidth = 2;
-    ctx.shadowColor = this.color; ctx.shadowBlur = 20;
     ctx.globalAlpha = this.invuln > 0 ? 0.6 : 1;
-    for (let k = 0; k < 3; k++) {
+    ctx.shadowColor = this.color;
+    // 四翼展开（在主环下方）
+    ctx.fillStyle = flash ? '#fff' : this.color;
+    ctx.shadowBlur = 18;
+    ctx.globalAlpha = 0.5;
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TAU + this.t * 0.2;
+      const wx = Math.cos(a) * r * 0.45, wy = Math.sin(a) * r * 0.45;
+      ctx.save();
+      ctx.translate(wx, wy);
+      ctx.rotate(a);
       ctx.beginPath();
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * TAU + (k * 0.3);
-        const rr = r * (0.9 + k * 0.05);
-        const px = Math.cos(a) * rr, py = Math.sin(a) * rr;
-        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-      }
-      ctx.closePath(); ctx.stroke();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(r * 0.35, -r * 0.12);
+      ctx.lineTo(r * 0.55, 0);
+      ctx.lineTo(r * 0.35, r * 0.12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
+    ctx.globalAlpha = 1;
+    // 外层旋转尖刺环
+    ctx.rotate(this.t * 0.3);
+    ctx.strokeStyle = this.color; ctx.lineWidth = 2.5;
+    ctx.shadowBlur = 24;
+    // 八角尖刺环
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      const outerR = i % 2 === 0 ? r * 1.0 : r * 0.82;
+      const px = Math.cos(a) * outerR, py = Math.sin(a) * outerR;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.stroke();
+    // 内层 cyan 环
+    ctx.strokeStyle = COLORS.cyan; ctx.lineWidth = 1.5;
+    ctx.shadowColor = COLORS.cyan; ctx.shadowBlur = 16;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU + 0.2;
+      const px = Math.cos(a) * r * 0.65, py = Math.sin(a) * r * 0.65;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.stroke();
     ctx.rotate(-this.t * 0.3);
-    // 核心球
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.7);
+    // 核心能量球
+    ctx.shadowColor = this.color; ctx.shadowBlur = 28;
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.65);
     g.addColorStop(0, flash ? '#fff' : '#fff');
-    g.addColorStop(0.4, this.color);
+    g.addColorStop(0.3, flash ? '#fff' : this.color);
+    g.addColorStop(0.65, this.color);
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.7, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.65, 0, TAU); ctx.fill();
     // 弱点核心
     if (this.weakpoint > 0 || this.invuln <= 0) {
       ctx.fillStyle = this.weakpoint > 0 ? COLORS.gold : '#fff';
-      ctx.shadowBlur = this.weakpoint > 0 ? 30 : 10;
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.22, 0, TAU); ctx.fill();
+      ctx.shadowBlur = this.weakpoint > 0 ? 35 : 14;
+      ctx.shadowColor = this.weakpoint > 0 ? COLORS.gold : '#fff';
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.18, 0, TAU); ctx.fill();
     }
     ctx.globalAlpha = 1;
     ctx.restore();
 
+    this.renderBubble(ctx);
     // Boss 血条由 HUD 绘制
   }
 }

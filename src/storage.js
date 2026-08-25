@@ -29,11 +29,11 @@ export function loadSave() {
       save.progress[d] = save.progress[d] || { cleared: 0 };
     }
     return save;
-  } catch {
+  } catch (e) {
     return defaultSave();
   }
 }
 
 export function saveSave(s) {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch {}
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { /* localStorage 不可用 */ }
 }
