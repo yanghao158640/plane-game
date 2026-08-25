@@ -194,7 +194,7 @@ export class HUD {
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.fillRect(bx, by, bw, 12);
       // 血量
-      const ratio = clamp(boss.hp / boss.maxHp, 0, 1);
+      const ratio = clamp(boss._displayHp / boss.maxHp, 0, 1);
       const gr = ctx.createLinearGradient(bx, 0, bx + bw, 0);
       gr.addColorStop(0, boss.color);
       gr.addColorStop(1, '#fff');

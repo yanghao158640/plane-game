@@ -858,6 +858,7 @@ export class Boss {
     const def = BOSSES[defId];
     this.def = def; this.defId = defId;
     this.maxHp = def.hp * diffMult; this.hp = this.maxHp;
+    this._displayHp = this.maxHp;     // 平滑显示用
     this.radius = def.radius; this.color = def.color;
     this.fireMult = fireMult;  // 弹幕频率倍率（>1 更猛）
     this.x = VIEW.W / 2; this.y = -def.radius;
@@ -894,6 +895,8 @@ export class Boss {
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.invuln = Math.max(0, this.invuln - dt);
     this.updateBubble(dt);
+    // 平滑显示血量：_displayHp 缓速追向实际 hp
+    this._displayHp += (this.hp - this._displayHp) * Math.min(1, dt * 4);
 
     // 阶段感知气泡
     const hpRatio = this.hp / this.maxHp;

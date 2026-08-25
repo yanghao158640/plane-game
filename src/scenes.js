@@ -898,7 +898,7 @@ export class GameScene extends Scene {
       subStage: this.spawner.subStage,
       phase: this.spawner.phase,
       levelProgress: this.spawner.levelProgress,
-      bossHpRatio: this.boss && this.boss.alive ? this.boss.hp / this.boss.maxHp : 0,
+      bossHpRatio: this.boss && this.boss.alive ? this.boss._displayHp / this.boss.maxHp : 0,
     });
 
     // Boss 登场演出
