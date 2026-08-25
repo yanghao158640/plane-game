@@ -1,5 +1,6 @@
 // scenes.js — 所有场景：菜单、战斗（核心）、结算
 import { VIEW, COLORS, SHIPS, DIFFICULTY, POWERUPS, WEAPONS, LEVELS, SUBSTAGES, BOSSES } from './data.js';
+import { t, setLang, getLang, LANGUAGES } from './lang.js';
 import { TAU, clamp, randRange, randInt, pick, chance, dist, circleHit, Pool } from './core.js';
 import { Background, Effects, HUD, Sfx, Bgm } from './render.js';
 import { Player, Enemy, Boss, Bullet, Particle, PowerUp } from './entities.js';
@@ -71,48 +72,51 @@ export class MenuScene extends Scene {
     const glitch = Math.sin(this.t * 3) * 2;
     ctx.fillStyle = COLORS.magenta;
     ctx.shadowColor = COLORS.magenta; ctx.shadowBlur = 20;
-    ctx.fillText('星陨·裂空战机', W / 2 + glitch, 130);
+    ctx.fillText(t('title'), W / 2 + glitch, 130);
     ctx.fillStyle = COLORS.cyan;
     ctx.shadowColor = COLORS.cyan; ctx.shadowBlur = 14;
     ctx.font = 'bold 16px Rajdhani, monospace';
-    ctx.fillText('STARFALL · RIFT FIGHTER', W / 2, 168);
+    ctx.fillText(t('subtitle'), W / 2, 168);
     ctx.shadowBlur = 0;
 
     // 最高分
     ctx.fillStyle = COLORS.gold;
     ctx.font = '18px Rajdhani, monospace';
-    ctx.fillText(`最高分 ${this.game.save.bestScore}  ·  最久存活 ${this.game.save.bestTime}s`, W / 2, 200);
+    ctx.fillText(`${t('bestScore')} ${this.game.save.bestScore}  ·  ${t('bestTime')} ${this.game.save.bestTime}s`, W / 2, 200);
 
     // 战机选择
     ctx.fillStyle = '#8899bb'; ctx.font = '14px Rajdhani, monospace';
-    ctx.fillText('选择战机', W / 2, 240);
+    ctx.fillText(t('selectShip'), W / 2, 240);
     const ship = SHIPS[this.ships[this.shipIdx]];
     this._drawShipCard(ctx, ship, W / 2, 320);
 
     // 难度
     ctx.fillStyle = '#8899bb'; ctx.font = '14px Rajdhani, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('难度', W / 2, 420);
+    ctx.fillText(t('difficulty'), W / 2, 420);
     const diffs = Object.keys(DIFFICULTY);
     const dw = 90, gap = 8, total = diffs.length * dw + (diffs.length - 1) * gap;
     let dx = W / 2 - total / 2;
     for (const d of diffs) {
       const sel = d === this.diff;
       const dfd = DIFFICULTY[d];
-      const clk = uiBtn(ctx, this.game.input, dx, 438, dw, 36, dfd.name, sel ? dfd.color : '#556677');
+      const clk = uiBtn(ctx, this.game.input, dx, 438, dw, 36, t('diff' + d.charAt(0).toUpperCase() + d.slice(1)), sel ? dfd.color : '#556677');
       if (clk) { this.diff = d; Sfx.play('click'); }
       dx += dw + gap;
     }
 
-    // 当前难度说明（差异展示，回答"三难度差别 / 噩梦难在哪"）
+    // 当前难度说明
     const df = DIFFICULTY[this.diff];
     ctx.font = '12px Rajdhani, monospace';
     ctx.fillStyle = '#aabbcc';
-    ctx.fillText(df.desc, W / 2, 494);
+    ctx.fillText(t('diff_' + this.diff + '_desc'), W / 2, 494);
     ctx.textAlign = 'left';
     let ddy = 516;
     ctx.font = '11px Rajdhani, monospace';
-    for (const line of df.details) {
+    const detailKeys = ['detail1','detail2','detail3','detail4','detail5'];
+    for (const dk of detailKeys) {
+      const line = t('diff_' + this.diff + '_' + dk);
+      if (line === 'diff_' + this.diff + '_' + dk) continue;
       ctx.fillStyle = df.color;
       ctx.fillText('▸', 64, ddy);
       ctx.fillStyle = '#c8d4e8';
@@ -120,9 +124,9 @@ export class MenuScene extends Scene {
       ddy += 16;
     }
 
-    // 进入关卡选择（三难度均 10 关，逐关解锁）
+    // 进入关卡选择
     ctx.textAlign = 'center';
-    if (uiBtn(ctx, this.game.input, W / 2 - 120, 600, 240, 52, '关卡选择 LEVEL SELECT', df.color)) {
+    if (uiBtn(ctx, this.game.input, W / 2 - 120, 600, 240, 52, t('levelSelect'), df.color)) {
       Sfx.play('powerup');
       this.game.gotoLevelSelect({ shipId: this.ships[this.shipIdx], difficulty: this.diff });
     }
@@ -130,11 +134,7 @@ export class MenuScene extends Scene {
     // 操作说明
     ctx.fillStyle = '#66778a'; ctx.font = '12px Rajdhani, monospace';
     ctx.textAlign = 'center';
-    const help = [
-      'PC: WASD/方向键 移动 · 鼠标拖拽 · 空格大招 · Shift闪避 · P暂停',
-      '手机: 拖拽移动 · 双指大招 · 三指闪避',
-      'Tip: 自动开火，专注走位；过关解锁下一关',
-    ];
+    const help = [t('pcControls'), t('mobileControls'), t('tip')];
     help.forEach((s, i) => ctx.fillText(s, W / 2, 690 + i * 20));
 
     // 战机切换箭头
@@ -144,6 +144,13 @@ export class MenuScene extends Scene {
       const px = this.game.input.pointer.x;
       if (px < 110) { this.shipIdx = (this.shipIdx - 1 + this.ships.length) % this.ships.length; Sfx.play('click'); }
       else if (px > W - 110) { this.shipIdx = (this.shipIdx + 1) % this.ships.length; Sfx.play('click'); }
+    }
+
+    // 语言切换按钮
+    const lang = getLang();
+    const nextLang = lang === 'zh' ? 'en' : 'zh';
+    if (uiBtn(ctx, this.game.input, W - 60, 14, 50, 28, LANGUAGES[nextLang].name, COLORS.gold)) {
+      setLang(nextLang); Sfx.play('click');
     }
     ctx.restore();
   }
@@ -173,9 +180,9 @@ export class MenuScene extends Scene {
     ctx.save();
     ctx.textAlign = 'center';
     ctx.fillStyle = ship.color; ctx.font = 'bold 22px Orbitron, monospace';
-    ctx.fillText(`${ship.name} · ${ship.title}`, cx, cy + 36);
+    ctx.fillText(`${t('ship_' + ship.id + '_name')} · ${t('ship_' + ship.id + '_title')}`, cx, cy + 36);
     ctx.fillStyle = '#aabbcc'; ctx.font = '13px Rajdhani, monospace';
-    ctx.fillText(ship.desc, cx, cy + 56);
+    ctx.fillText(t('ship_' + ship.id + '_desc'), cx, cy + 56);
     ctx.restore();
   }
 }
@@ -208,21 +215,24 @@ export class LevelSelectScene extends Scene {
     ctx.font = 'bold 30px Orbitron, monospace';
     ctx.fillStyle = diff.color;
     ctx.shadowColor = diff.color; ctx.shadowBlur = 14;
-    ctx.fillText(`${diff.name} · ${diff.label}`, W / 2, 64);
+    ctx.fillText(`${t('diff' + this.opts.difficulty.charAt(0).toUpperCase() + this.opts.difficulty.slice(1))} · ${diff.label}`, W / 2, 64);
     ctx.shadowBlur = 0;
     ctx.font = '12px Rajdhani, monospace';
     ctx.fillStyle = '#aabbcc';
-    ctx.fillText(diff.desc, W / 2, 92);
+    ctx.fillText(t('diff_' + this.opts.difficulty + '_desc'), W / 2, 92);
 
     // 差异明细
     ctx.textAlign = 'left';
     let dy = 118;
     ctx.font = 'bold 11px Rajdhani, monospace';
     ctx.fillStyle = '#778899';
-    ctx.fillText('难度差异 DIFFICULTY DIFF', 30, dy);
+    ctx.fillText(t('difficultyDiff'), 30, dy);
     dy += 17;
     ctx.font = '11px Rajdhani, monospace';
-    for (const line of diff.details) {
+    const detailKeys2 = ['detail1','detail2','detail3','detail4','detail5'];
+    for (const dk of detailKeys2) {
+      const line = t('diff_' + this.opts.difficulty + '_' + dk);
+      if (line === 'diff_' + this.opts.difficulty + '_' + dk) continue;
       ctx.fillStyle = diff.color;
       ctx.fillText('▸', 32, dy);
       ctx.fillStyle = '#c8d4e8';
@@ -234,7 +244,7 @@ export class LevelSelectScene extends Scene {
     ctx.textAlign = 'center';
     ctx.font = 'bold 13px Rajdhani, monospace';
     ctx.fillStyle = COLORS.gold;
-    ctx.fillText(`已通关 ${cleared} / ${LEVELS.length}  ·  通关解锁下一关`, W / 2, dy + 8);
+    ctx.fillText(t('progress', cleared, LEVELS.length), W / 2, dy + 8);
 
     // 关卡网格 5×2
     const cols = 5;
@@ -257,9 +267,16 @@ export class LevelSelectScene extends Scene {
     }
 
     // 返回按钮
-    if (uiBtn(ctx, this.game.input, W / 2 - 80, H - 64, 160, 44, '返回 BACK', '#556677')) {
+    if (uiBtn(ctx, this.game.input, W / 2 - 80, H - 64, 160, 44, t('back'), '#556677')) {
       Sfx.play('click');
       this.game.gotoMenu();
+    }
+
+    // 语言切换按钮
+    const lang = getLang();
+    const nextLang = lang === 'zh' ? 'en' : 'zh';
+    if (uiBtn(ctx, this.game.input, W - 60, 14, 50, 28, LANGUAGES[nextLang].name, COLORS.gold)) {
+      setLang(nextLang); Sfx.play('click');
     }
     ctx.restore();
   }
@@ -285,21 +302,21 @@ export class LevelSelectScene extends Scene {
     // 关卡名
     ctx.fillStyle = locked ? '#556677' : '#c8d4e8';
     ctx.font = 'bold 12px Rajdhani, monospace';
-    this._cellWrap(ctx, lv.name, x + w / 2, y + 58, w - 10);
+    this._cellWrap(ctx, t('lv_' + lv.id + '_name'), x + w / 2, y + 58, w - 10);
     // Boss 名（小字）
     ctx.fillStyle = locked ? '#445566' : '#778899';
     ctx.font = '10px Rajdhani, monospace';
-    this._cellWrap(ctx, '关底 · ' + BOSSES[lv.bosses[2].type].name, x + w / 2, y + 78, w - 8);
+    this._cellWrap(ctx, t('bossSuffix') + ' · ' + t('boss_' + BOSSES[lv.bosses[2].type].id + '_name'), x + w / 2, y + 78, w - 8);
     // 状态标签
     if (locked) {
       ctx.fillStyle = '#556677'; ctx.font = 'bold 10px Rajdhani, monospace';
-      ctx.fillText('未解锁 LOCKED', x + w / 2, y + h - 10);
+      ctx.fillText(t('locked'), x + w / 2, y + h - 10);
     } else if (clearedFlag) {
       ctx.fillStyle = COLORS.gold; ctx.font = 'bold 10px Rajdhani, monospace';
-      ctx.fillText('已通关 CLEARED', x + w / 2, y + h - 10);
+      ctx.fillText(t('clearedLabel'), x + w / 2, y + h - 10);
     } else {
       ctx.fillStyle = accent; ctx.font = 'bold 10px Rajdhani, monospace';
-      ctx.fillText('可挑战 READY', x + w / 2, y + h - 10);
+      ctx.fillText(t('ready'), x + w / 2, y + h - 10);
     }
     ctx.restore();
     return clicked;
@@ -405,7 +422,7 @@ export class GameScene extends Scene {
     this.boss.init(id, this.diff.hpMult * hpMult, this.diff.fireMult * fireBonus);
     this.bg.setSpeed(0.3);
     this.bossIntroT = 2.6;
-    this.bossIntroName = this.boss.def.name;
+    this.bossIntroName = t('boss_' + this.boss.def.id + '_name');
     Sfx.play('boss');
     Bgm.setMode('boss');
     this.fx.flash(this.boss.color, 0.3);
@@ -937,7 +954,7 @@ export class GameScene extends Scene {
     ctx.fillStyle = COLORS.red;
     ctx.shadowColor = COLORS.red; ctx.shadowBlur = 20;
     ctx.font = 'bold 14px Rajdhani, monospace';
-    ctx.fillText('⚠ WARNING ⚠', VIEW.W / 2, VIEW.H / 2 - 40);
+    ctx.fillText(t('bossWarning'), VIEW.W / 2, VIEW.H / 2 - 40);
     ctx.font = 'bold 38px Orbitron, monospace';
     ctx.fillText(this.bossIntroName, VIEW.W / 2, VIEW.H / 2);
     ctx.restore();
@@ -953,15 +970,15 @@ export class GameScene extends Scene {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = 'bold 16px Rajdhani, monospace';
     ctx.fillStyle = '#8899bb';
-    ctx.fillText(`LEVEL ${lv.id} / ${LEVELS.length}`, VIEW.W / 2, VIEW.H / 2 - 30);
+    ctx.fillText(`${t('level')} ${lv.id} / ${LEVELS.length}`, VIEW.W / 2, VIEW.H / 2 - 30);
     ctx.font = 'bold 40px Orbitron, monospace';
     ctx.fillStyle = lv.id === 1 ? COLORS.green : COLORS.cyan;
     ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 16;
-    ctx.fillText(lv.name, VIEW.W / 2, VIEW.H / 2 + 8);
+    ctx.fillText(t('lv_' + lv.id + '_name'), VIEW.W / 2, VIEW.H / 2 + 8);
     ctx.shadowBlur = 0;
     ctx.font = '13px Rajdhani, monospace';
     ctx.fillStyle = '#aabbcc';
-    ctx.fillText('3 层挑战 · 每层击败 Boss 推进 · 通关解锁下一关', VIEW.W / 2, VIEW.H / 2 + 44);
+    ctx.fillText(t('layerInfo'), VIEW.W / 2, VIEW.H / 2 + 44);
     ctx.restore();
   }
   /** 层间横幅：层0→1→2 推进时显示层名 + 主题 */
@@ -976,15 +993,15 @@ export class GameScene extends Scene {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = 'bold 13px Rajdhani, monospace';
     ctx.fillStyle = '#8899bb';
-    ctx.fillText(`LEVEL ${lv.id} · 层 ${this.spawner.subStage + 1} / 3`, VIEW.W / 2, VIEW.H / 2 - 20);
+    ctx.fillText(`${t('level')} ${lv.id} · ${t('layerNum', this.spawner.subStage + 1, 3)}`, VIEW.W / 2, VIEW.H / 2 - 20);
     ctx.font = 'bold 32px Orbitron, monospace';
     ctx.fillStyle = COLORS.cyan;
     ctx.shadowColor = COLORS.cyan; ctx.shadowBlur = 14;
-    ctx.fillText(sd.name, VIEW.W / 2, VIEW.H / 2 + 12);
+    ctx.fillText(t('substage_' + sd.id + '_name'), VIEW.W / 2, VIEW.H / 2 + 12);
     ctx.shadowBlur = 0;
     ctx.font = '12px Rajdhani, monospace';
     ctx.fillStyle = '#aabbcc';
-    ctx.fillText(sd.desc, VIEW.W / 2, VIEW.H / 2 + 38);
+    ctx.fillText(t('substage_' + sd.id + '_desc'), VIEW.W / 2, VIEW.H / 2 + 38);
     ctx.restore();
   }
   /** 关末选择：继续下一关 / 退出到关卡选择（带本局战绩与当前构筑） */
@@ -1000,18 +1017,18 @@ export class GameScene extends Scene {
     ctx.fillStyle = COLORS.gold;
     ctx.shadowColor = COLORS.gold; ctx.shadowBlur = 16;
     ctx.font = 'bold 32px Orbitron, monospace';
-    ctx.fillText('关卡通过 · STAGE CLEAR', VIEW.W / 2, 150);
+    ctx.fillText(t('stageClear'), VIEW.W / 2, 150);
     ctx.shadowBlur = 0;
     ctx.font = '14px Rajdhani, monospace';
     ctx.fillStyle = '#aabbcc';
-    ctx.fillText(`第 ${lv.id} 关「${lv.name}」已通关 · 进度已保存`, VIEW.W / 2, 184);
+    ctx.fillText(t('levelPassed', lv.id, t('lv_' + lv.id + '_name')), VIEW.W / 2, 184);
 
     // 本局战绩
     const stats = [
-      ['分数', this.score],
-      ['击杀', this.kills],
-      ['存活', this.time.toFixed(0) + 's'],
-      ['Boss 击破', this.bossKills],
+      [t('score'), this.score],
+      [t('kills'), this.kills],
+      [t('survivalTime'), this.time.toFixed(0) + 's'],
+      [t('bossKills'), this.bossKills],
     ];
     ctx.font = '15px Rajdhani, monospace';
     let sy = 230;
@@ -1027,7 +1044,7 @@ export class GameScene extends Scene {
     ctx.textAlign = 'center';
     ctx.font = 'bold 12px Rajdhani, monospace';
     ctx.fillStyle = '#778899';
-    ctx.fillText('当前构筑 BUILD', VIEW.W / 2, sy + 10);
+    ctx.fillText('BUILD', VIEW.W / 2, sy + 10);
     ctx.font = '12px Rajdhani, monospace';
     let bx = VIEW.W / 2 - (this.player.weapons.length - 1) * 50;
     for (const w of this.player.weapons) {
@@ -1040,19 +1057,19 @@ export class GameScene extends Scene {
     // 下一关预览
     ctx.font = 'bold 13px Rajdhani, monospace';
     ctx.fillStyle = COLORS.cyan;
-    ctx.fillText(`下一关：第 ${next.id} 关「${next.name}」`, VIEW.W / 2, sy + 64);
+    ctx.fillText(t('nextLevel', next.id, t('lv_' + next.id + '_name')), VIEW.W / 2, sy + 64);
 
     // 按钮：继续 / 退出
-    if (uiBtn(ctx, this.game.input, VIEW.W / 2 - 200, VIEW.H - 150, 190, 54, '继续下一关 CONTINUE', COLORS.green)) {
+    if (uiBtn(ctx, this.game.input, VIEW.W / 2 - 200, VIEW.H - 150, 190, 54, t('continue'), COLORS.green)) {
       this._chooseContinue();
     }
-    if (uiBtn(ctx, this.game.input, VIEW.W / 2 + 10, VIEW.H - 150, 190, 54, '退出关卡选择 QUIT', '#556677')) {
+    if (uiBtn(ctx, this.game.input, VIEW.W / 2 + 10, VIEW.H - 150, 190, 54, t('quitToSelect'), '#556677')) {
       this._chooseQuit();
     }
     ctx.font = '11px Rajdhani, monospace';
     ctx.fillStyle = '#66778a';
     ctx.textAlign = 'center';
-    ctx.fillText('退出后本关进度已保存，可从关卡选择随时重玩或挑战更高关', VIEW.W / 2, VIEW.H - 80);
+    ctx.fillText(t('quitSaveHint'), VIEW.W / 2, VIEW.H - 80);
     ctx.restore();
   }
   _renderUpgrade(ctx) {
@@ -1063,10 +1080,10 @@ export class GameScene extends Scene {
     ctx.fillStyle = COLORS.gold;
     ctx.shadowColor = COLORS.gold; ctx.shadowBlur = 14;
     ctx.font = 'bold 28px Orbitron, monospace';
-    ctx.fillText('强化选择 · UPGRADE', VIEW.W / 2, VIEW.H / 2 - 160);
+    ctx.fillText(t('upgrade'), VIEW.W / 2, VIEW.H / 2 - 160);
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#8899bb'; ctx.font = '13px Rajdhani, monospace';
-    ctx.fillText('点击卡片或按 1 / 2 / 3', VIEW.W / 2, VIEW.H / 2 - 130);
+    ctx.fillText(t('upgradeHint'), VIEW.W / 2, VIEW.H / 2 - 130);
 
     const rects = this._cardRects();
     for (let i = 0; i < 3; i++) {
@@ -1127,13 +1144,13 @@ export class GameScene extends Scene {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = COLORS.cyan; ctx.font = 'bold 40px Orbitron, monospace';
     ctx.shadowColor = COLORS.cyan; ctx.shadowBlur = 14;
-    ctx.fillText('已暂停 PAUSED', VIEW.W / 2, VIEW.H / 2 - 100);
+    ctx.fillText(t('pause'), VIEW.W / 2, VIEW.H / 2 - 100);
     ctx.shadowBlur = 0;
     ctx.restore();
-    if (uiBtn(ctx, this.game.input, VIEW.W / 2 - 90, VIEW.H / 2 - 30, 180, 50, '继续 RESUME', COLORS.green)) {
+    if (uiBtn(ctx, this.game.input, VIEW.W / 2 - 90, VIEW.H / 2 - 30, 180, 50, t('resume'), COLORS.green)) {
       this.subState = 'play'; Sfx.play('click');
     }
-    if (uiBtn(ctx, this.game.input, VIEW.W / 2 - 90, VIEW.H / 2 + 36, 180, 50, '放弃 QUIT', COLORS.red)) {
+    if (uiBtn(ctx, this.game.input, VIEW.W / 2 - 90, VIEW.H / 2 + 36, 180, 50, t('quit'), COLORS.red)) {
       Sfx.play('click'); this.game.gotoMenu();
     }
   }
@@ -1174,7 +1191,7 @@ export class GameOverScene extends Scene {
     ctx.fillStyle = victory ? COLORS.gold : COLORS.red;
     ctx.shadowColor = victory ? COLORS.gold : COLORS.red; ctx.shadowBlur = 16;
     ctx.font = 'bold 44px Orbitron, monospace';
-    ctx.fillText(victory ? '任务成功' : '任务结束', W / 2, 150);
+    ctx.fillText(victory ? t('victory') : t('gameOver'), W / 2, 150);
     ctx.shadowBlur = 0;
 
     // 评级（通关强制 S + 金色）
@@ -1186,19 +1203,19 @@ export class GameOverScene extends Scene {
     ctx.fillText(finalRank, W / 2, 280);
     if (victory) {
       ctx.font = 'bold 18px Orbitron, monospace';
-      ctx.fillText('CLEAR · 全 10 层通关', W / 2, 340);
+      ctx.fillText(t('fullClear'), W / 2, 340);
     }
     ctx.shadowBlur = 0;
 
     // 数据
     const lines = [
-      ['分数', s.score],
-      ['存活时间', s.time.toFixed(0) + 's'],
-      ['击杀数', s.kills],
-      ['Boss 击破', s.bossKills],
-      ['最高连击', s.maxCombo],
-      ['通关层数', (victory ? LEVELS.length : (this.game.save.maxLevel || 0)) + ' / ' + LEVELS.length],
-      ['战机', s.ship.name],
+      [t('score'), s.score],
+      [t('survivalTime'), s.time.toFixed(0) + 's'],
+      [t('kills'), s.kills],
+      [t('bossKills'), s.bossKills],
+      [t('maxCombo'), s.maxCombo],
+      [t('clearedLevels'), (victory ? LEVELS.length : (this.game.save.maxLevel || 0)) + ' / ' + LEVELS.length],
+      [t('ship'), t('ship_' + s.ship.id + '_name')],
     ];
     ctx.font = '18px Rajdhani, monospace';
     let y = victory ? 376 : 380;
@@ -1212,14 +1229,14 @@ export class GameOverScene extends Scene {
     // 最高分
     ctx.textAlign = 'center';
     ctx.fillStyle = COLORS.gold; ctx.font = '16px Rajdhani, monospace';
-    ctx.fillText(`最高分 ${this.game.save.bestScore}`, W / 2, y + 10);
+    ctx.fillText(`${t('bestScore2')} ${this.game.save.bestScore}`, W / 2, y + 10);
 
     // 按钮
-    if (uiBtn(ctx, this.game.input, W / 2 - 180, H - 130, 170, 50, '再战 RETRY', COLORS.green)) {
+    if (uiBtn(ctx, this.game.input, W / 2 - 180, H - 130, 170, 50, t('retry'), COLORS.green)) {
       Sfx.play('click');
       this.game.gotoGame({ shipId: s.ship.id, difficulty: s.difficulty || 'normal' });
     }
-    if (uiBtn(ctx, this.game.input, W / 2 + 10, H - 130, 170, 50, '主菜单 MENU', COLORS.cyan)) {
+    if (uiBtn(ctx, this.game.input, W / 2 + 10, H - 130, 170, 50, t('mainMenu'), COLORS.cyan)) {
       Sfx.play('click');
       this.game.gotoMenu();
     }

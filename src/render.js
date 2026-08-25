@@ -1,6 +1,7 @@
 // render.js — 背景、特效、HUD、程序化音效
 import { VIEW, COLORS, LEVELS, SUBSTAGES } from './data.js';
 import { TAU, clamp, randRange, pick } from './core.js';
+import { t } from './lang.js';
 
 // ───────────────────────── 滚动星空背景 ─────────────────────────
 export class Background {
@@ -137,14 +138,14 @@ export class HUD {
     const barW = 150, barH = 8;
     let y = 14;
     // 血量
-    this._bar(ctx, pad, y, barW, barH, player.hp / player.maxHp, COLORS.red, 'HP', Math.ceil(player.hp));
+    this._bar(ctx, pad, y, barW, barH, player.hp / player.maxHp, COLORS.red, t('hp'), Math.ceil(player.hp));
     y += 16;
     // 护盾
-    this._bar(ctx, pad, y, barW, barH, player.shield / player.maxShield, COLORS.green, 'SH', Math.ceil(player.shield));
+    this._bar(ctx, pad, y, barW, barH, player.shield / player.maxShield, COLORS.green, t('shield'), Math.ceil(player.shield));
     y += 16;
     // 大招能量
     const ultRatio = player.ultCharge / player.ultMax;
-    this._bar(ctx, pad, y, barW, barH, ultRatio, ultReady ? COLORS.gold : COLORS.purple, 'ULT', ultReady ? 'READY' : Math.floor(ultRatio * 100) + '%');
+    this._bar(ctx, pad, y, barW, barH, ultRatio, ultReady ? COLORS.gold : COLORS.purple, t('ult'), ultReady ? t('ultReady') : Math.floor(ultRatio * 100) + '%');
 
     // ── 顶部右：分数 + 时间 + 闪避 ──
     ctx.save();
@@ -156,11 +157,11 @@ export class HUD {
     ctx.shadowBlur = 0;
     ctx.font = '13px Rajdhani, monospace';
     ctx.fillStyle = '#8899bb';
-    ctx.fillText(`TIME ${time.toFixed(0)}s`, VIEW.W - pad, 50);
+    ctx.fillText(`${t('time')} ${time.toFixed(0)}s`, VIEW.W - pad, 50);
     // 闪避充能
     ctx.font = '14px Rajdhani, monospace';
     ctx.fillStyle = COLORS.cyan;
-    let dashStr = 'DASH ';
+    let dashStr = t('dash') + ' ';
     for (let i = 0; i < player.maxDash; i++) dashStr += i < player.dashes ? '◆' : '◇';
     ctx.fillText(dashStr, VIEW.W - pad, 70);
     ctx.restore();
@@ -173,7 +174,7 @@ export class HUD {
       ctx.fillStyle = COLORS.gold;
       ctx.shadowColor = COLORS.gold; ctx.shadowBlur = 12;
       ctx.globalAlpha = clamp(this.comboAlpha, 0, 1);
-      ctx.fillText(`×${combo} COMBO`, VIEW.W / 2, 96);
+      ctx.fillText(`×${combo} ${t('combo')}`, VIEW.W / 2, 96);
       ctx.restore();
     }
 
@@ -185,7 +186,7 @@ export class HUD {
       ctx.textAlign = 'center';
       ctx.fillStyle = boss.color;
       ctx.shadowColor = boss.color; ctx.shadowBlur = 8;
-      ctx.fillText(boss.def.name, VIEW.W / 2, by - 8);
+      ctx.fillText(t('boss_' + boss.def.id + '_name'), VIEW.W / 2, by - 8);
       ctx.shadowBlur = 0;
       // 底框
       ctx.strokeStyle = boss.color; ctx.lineWidth = 1.5;
@@ -240,11 +241,11 @@ export class HUD {
     // 关标题
     ctx.font = 'bold 11px Rajdhani, monospace';
     ctx.fillStyle = '#778899';
-    ctx.fillText(`LEVEL ${lv.id} / ${total}`, VIEW.W / 2, y - 26);
+    ctx.fillText(`${t('level')} ${lv.id} / ${total}`, VIEW.W / 2, y - 26);
     ctx.fillStyle = COLORS.cyan;
     ctx.font = 'bold 15px Orbitron, monospace';
     ctx.shadowColor = COLORS.cyan; ctx.shadowBlur = 6;
-    ctx.fillText(lv.name, VIEW.W / 2, y - 10);
+    ctx.fillText(t('lv_' + lv.id + '_name'), VIEW.W / 2, y - 10);
     ctx.shadowBlur = 0;
 
     // 进度条背景
@@ -298,15 +299,15 @@ export class HUD {
     // 状态文字（当前层）
     let stateText, stateColor;
     if (phase === 'cleared') {
-      stateText = '关卡通关 · STAGE CLEAR';
+      stateText = t('stageClear2');
       stateColor = COLORS.gold;
     } else if (phase === 'boss') {
       const sd = SUBSTAGES[subStage] || SUBSTAGES[0];
-      stateText = subStage >= 2 ? `层 ${subStage + 1}/3 · 关底 BOSS` : `层 ${subStage + 1}/3 · ${sd.name} BOSS`;
+      stateText = subStage >= 2 ? t('finalBoss', subStage + 1, 3) : t('layerBoss', subStage + 1, 3, t('substage_' + sd.id + '_name'));
       stateColor = COLORS.red;
     } else {
       const sd = SUBSTAGES[subStage] || SUBSTAGES[0];
-      stateText = `层 ${subStage + 1}/3 · ${sd.name}`;
+      stateText = t('layerName', subStage + 1, 3, t('substage_' + sd.id + '_name'));
       stateColor = '#778899';
     }
     ctx.font = 'bold 11px Rajdhani, monospace';
